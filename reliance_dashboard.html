@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reliance Industries Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .chart-container { width: 80%; height: 500px; margin: 50px auto; }
+    </style>
+</head>
+<body>
+    <h2>Reliance Industries Dashboard</h2>
+    <input type="file" id="fileInput" accept=".json">
+    
+    <div>
+        <h3><b>Price Trend Over Time (Line Chart)</b></h3>
+        <div id="priceTrend" class="chart-container"></div>
+    </div>
+    <div>
+        <h3><b>Daily Percentage Change (Bar Chart)</b></h3>
+        <div id="dailyChange" class="chart-container"></div>
+    </div>
+    <div>
+        <h3><b>Volume Traded Over Time (Bar Chart)</b></h3>
+        <div id="volumeChart" class="chart-container"></div>
+    </div>
+    <div>
+        <h3><b>High vs. Low Price Range (Candlestick Chart)</b></h3>
+        <div id="candlestickChart" class="chart-container"></div>
+    </div>
+    <div>
+        <h3><b>5-Day Moving Average (Line Chart)</b></h3>
+        <div id="movingAverage" class="chart-container"></div>
+    </div>
+
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const jsonData = JSON.parse(e.target.result);
+                    generateDashboard(jsonData);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function generateDashboard(data) {
+            const dates = data.map(item => item.Date);
+            const prices = data.map(item => parseFloat(item.Price.replace(',', '')));
+            const volume = data.map(item => parseFloat(item["Vol."].replace('M', '')) * 1e6);
+            const openPrices = data.map(item => parseFloat(item.Open.replace(',', '')));
+            const highPrices = data.map(item => parseFloat(item.High.replace(',', '')));
+            const lowPrices = data.map(item => parseFloat(item.Low.replace(',', '')));
+            const dailyChange = data.map(item => parseFloat(item["Change %"].replace('%', '')));
+            
+            const maxPriceIndex = prices.indexOf(Math.max(...prices));
+            const minPriceIndex = prices.indexOf(Math.min(...prices));
+            const maxVolumeIndex = volume.indexOf(Math.max(...volume));
+            const minVolumeIndex = volume.indexOf(Math.min(...volume));
+            const maxDailyChangeIndex = dailyChange.indexOf(Math.max(...dailyChange));
+            const minDailyChangeIndex = dailyChange.indexOf(Math.min(...dailyChange));
+
+            // Price Trend
+            Plotly.newPlot('priceTrend', [{
+                x: dates, y: prices, type: 'scatter', mode: 'lines+markers', name: 'Price',
+                marker: { size: 8, color: prices.map((p, i) => i === maxPriceIndex ? 'green' : i === minPriceIndex ? 'red' : 'blue') }
+            }], { title: 'Price Trend Over Time' });
+            
+            // Daily Percentage Change
+            Plotly.newPlot('dailyChange', [{
+                x: dates, y: dailyChange, type: 'bar', name: 'Daily Change %',
+                marker: { color: dailyChange.map((p, i) => i === maxDailyChangeIndex ? 'green' : i === minDailyChangeIndex ? 'red' : 'blue') }
+            }], { title: 'Daily Percentage Change' });
+            
+            // Volume Traded
+            Plotly.newPlot('volumeChart', [{
+                x: dates, y: volume, type: 'bar', name: 'Volume Traded',
+                marker: { color: volume.map((v, i) => i === maxVolumeIndex ? 'green' : i === minVolumeIndex ? 'red' : 'blue') }
+            }], { title: 'Volume Traded Over Time' });
+            
+            // Candlestick Chart
+            Plotly.newPlot('candlestickChart', [{
+                x: dates,
+                open: openPrices,
+                high: highPrices,
+                low: lowPrices,
+                close: prices,
+                type: 'candlestick',
+                name: 'Stock Prices'
+            }], { title: 'High vs. Low Price Range' });
+            
+            // Moving Average
+            const movingAvg = prices.map((val, idx, arr) => {
+                if (idx < 5) return null;
+                return arr.slice(idx - 5, idx).reduce((sum, val) => sum + val, 0) / 5;
+            });
+            Plotly.newPlot('movingAverage', [{
+                x: dates.slice(5), y: movingAvg.slice(5), type: 'scatter', mode: 'lines', name: '5-Day Moving Avg'
+            }], { title: '5-Day Moving Average' });
+        }
+    </script>
+</body>
+</html>
